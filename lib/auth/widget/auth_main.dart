@@ -1,3 +1,4 @@
+import 'package:auth_file/auth/bloc/bloc_auth.dart';
 import 'package:auth_file/constant.dart';
 import 'package:auth_file/home/myHome.dart';
 import 'package:flutter/gestures.dart';
@@ -12,6 +13,8 @@ class AuthMainPage extends StatefulWidget {
 class _AuthMainPageState extends State<AuthMainPage>
     with SingleTickerProviderStateMixin {
   TabController _tabController;
+  AuthBloc bloc = AuthBloc();
+  var emailVal = RegExp(r'^([A-Za-z0-9+_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,63})$');
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -62,6 +65,14 @@ class _AuthMainPageState extends State<AuthMainPage>
                       setState(() {
                         index = selectedIndex;
                         _tabController.animateTo(index);
+                        if(_tabController.index == 1){
+                          _emailController.clear();
+                          _passwordController.clear();
+                        }else{
+                          _nameController.clear();
+                          _emailController.clear();
+                          _passwordController.clear();
+                        }
                       });
                     },
                     automaticIndicatorColorAdjustment: false,
@@ -69,6 +80,7 @@ class _AuthMainPageState extends State<AuthMainPage>
                     tabs: list,
                   ),
                 ),
+                SizedBox(height: 20,),
                 index == 0 ?
                 Container(
                   height:  MediaQuery.of(context).size. height * 0.22,
@@ -78,28 +90,53 @@ class _AuthMainPageState extends State<AuthMainPage>
                   child:  selectField(1),
                 ),
                 SizedBox(
-                  height: 20,
+                  height: 40,
                 ),
                 Container(
                   width: MediaQuery.of(context).size.width,
                   padding: EdgeInsets.symmetric(horizontal: 40),
                   child: RawMaterialButton(
                     shape: StadiumBorder(),
-                    onPressed: () {
+                    onPressed: () async{
                       bool check = validateField(index);
                       if(!check){
                         return;
                       }else{
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context){
-                          return MyHomePage();
-                        }));
+                        if(index == 1){
+                         await bloc.postAuthentication(name: _nameController.text.trim(),
+                          email: _emailController.text.trim(),password: _passwordController.text.trim());
+                         if(bloc.successController.value == true){
+                           Navigator.pushReplacement(context, MaterialPageRoute(builder: (context){
+                             return MyHomePage();
+                           }));
+                           var toast = SnackBar(content:Text(bloc.showMessageController.value,style: toastTextStyle,),backgroundColor: defaultColor,);
+                           ScaffoldMessenger.of(context).showSnackBar(toast);
+                         }else{
+                           var toast = SnackBar(content:Text(bloc.showMessageController.value,style: toastTextStyle,),backgroundColor: defaultColor,);
+                           ScaffoldMessenger.of(context).showSnackBar(toast);
+                         }
+                        }
+                        else{
+                          await bloc.loginAuthentication(
+                              email: _emailController.text.trim(),password: _passwordController.text.trim());
+                          if(bloc.successController.value == true){
+                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context){
+                              return MyHomePage();
+                            }));
+                            var toast = SnackBar(content:Text(bloc.showMessageController.value,style: toastTextStyle,),backgroundColor: defaultColor,);
+                            ScaffoldMessenger.of(context).showSnackBar(toast);
+                          }else{
+                            var toast = SnackBar(content:Text(bloc.showMessageController.value,style: toastTextStyle,),backgroundColor: defaultColor,);
+                            ScaffoldMessenger.of(context).showSnackBar(toast);
+                          }
+                        }
                       }
                     },
                     fillColor: defaultColor,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       child: Text(
-                        'CONTINUE',
+                          btnText,
                         style: btnTextStyle
                       ),
                     ),
@@ -133,7 +170,7 @@ class _AuthMainPageState extends State<AuthMainPage>
 
   field({controller,hintText,bool isPass}){
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8,horizontal: 12),
       child: TextField(
         controller: controller,
         cursorColor: defaultColor,
@@ -166,6 +203,12 @@ class _AuthMainPageState extends State<AuthMainPage>
       return false;
     } else if(_passwordController.text == null || _passwordController.text.trim().isEmpty){
       ScaffoldMessenger.of(context).showSnackBar(snackBarPass);
+      return false;
+    }else if(_emailController.text != null && !emailVal.hasMatch(_emailController.text.trim())){
+      ScaffoldMessenger.of(context).showSnackBar(snackBarEmailVal);
+      return false;
+    }else if( _passwordController.text != null   &&  _passwordController.text.length <= 5){
+      ScaffoldMessenger.of(context).showSnackBar(snackBarPassVal);
       return false;
     }else{
       return true;
